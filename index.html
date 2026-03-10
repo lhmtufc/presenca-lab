@@ -320,8 +320,8 @@
     </div>
 
     <script>
-        const SHEET_ID = '1NdSMN26GilAADXI8S4h9fmn9yiUUSEuJmwWlGMnjbzE';
-        const GID_HORARIOS = '1651859946';
+        const SHEET_ID = '1RX6L8yxukcRhLoih3gH6BUsrx4JgZeIG4duKSu8ciIU';
+        const GID_HORARIOS = '0';
         const GID_MONO = '766295141';
         const GID_VW = '146544989';
 
@@ -426,8 +426,8 @@
                 if (!data) return;
                 for (let i = 0; i < data.length; i++) {
                     const row = data[i];
-                    if (row.length < 5) continue;
-                    const task = row[2], resp = row[4];
+                    if (row.length < 4) continue;
+                    const task = row[1], resp = row[3];
                     // Ignora cabeçalhos ou linhas inválidas
                     if (task && resp &&
                         resp.toLowerCase() !== "responsavel" &&
