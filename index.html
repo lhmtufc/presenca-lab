@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Presença - Lab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #38bdf8;
+            --secondary: #94a3b8;
+            --text: #f8fafc;
+            --accent: #22c55e;
+            --glass: rgba(30, 41, 59, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+            background-image: radial-gradient(circle at top right, #1e3a8a, transparent),
+                              radial-gradient(circle at bottom left, #1e1b4b, transparent);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        #current-time {
+            font-size: 1.2rem;
+            color: var(--secondary);
+            font-weight: 300;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .column {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .column:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .column.active {
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+            transform: scale(1.05);
+        }
+
+        h2 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            color: var(--secondary);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .active h2 {
+            color: var(--primary);
+        }
+
+        .time-range {
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .presence-list {
+            list-style: none;
+        }
+
+        .presence-list li {
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 0.5rem;
+            border-radius: 0.75rem;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .presence-list li::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            margin-right: 12px;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .loading {
+            text-align: center;
+            grid-column: span 3;
+            padding: 3rem;
+            font-size: 1.2rem;
+            color: var(--secondary);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .column.active {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Monitor de Presença</h1>
+        <p id="current-time">Carregando...</p>
+    </header>
+
+    <div class="container" id="app-container">
+        <div class="loading">Sincronizando com Google Sheets...</div>
+    </div>
+
+    <script>
+        // URL da planilha publicada como CSV (Aba HORÁRIOS)
+        // Link configurado para exportação CSV direta
+        const SHEET_ID = '1NdSMN26GilAADXI8S4h9fmn9yiUUSEuJmwWlGMnjbzE';
+        const GID = '0'; // GID da aba HORÁRIOS
+        const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+
+        // Mapeamento de colunas por dia (1-indexed based on CSV parsing)
+        // Seg: 1-8, Ter: 9-16, Qua: 17-24, Qui: 25-32, Sex: 33-39
+        const DAYS_MAP = {
+            1: [1, 9],  // Segunda
+            2: [9, 17], // Terça
+            3: [17, 25],// Quarta
+            4: [25, 33],// Quinta
+            5: [33, 40] // Sexta
+        };
+
+        const DAY_NAMES = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+        async function fetchData() {
+            try {
+                const response = await fetch(CSV_URL);
+                const data = await response.text();
+                return parseCSV(data);
+            } catch (error) {
+                console.error("Erro ao carregar dados:", error);
+                document.getElementById('app-container').innerHTML = '<div class="loading">Erro ao conectar com o Google Sheets. Verifique a URL.</div>';
+            }
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n');
+            return lines.map(line => {
+                // Handle basic CSV parsing (comma or semicolon)
+                return line.split(',').map(cell => cell.replace(/"/g, '').trim());
+            });
+        }
+
+        function getPeopleForHour(data, weekday, hour) {
+            if (weekday < 1 || weekday > 5) return ["Fim de Semana"];
+            
+            const [colStart, colEnd] = DAYS_MAP[weekday];
+            
+            // Procura a linha da hora
+            let rowData = null;
+            for (let i = 0; i < data.length; i++) {
+                const timeCell = data[i][0];
+                if (!timeCell) continue;
+                
+                // Regex para pegar os números da hora na primeira célula (ex: "16 - 17" ou "16:00")
+                const hours = timeCell.match(/\d+/g);
+                if (hours && hours.length >= 2) {
+                    const hStart = parseInt(hours[0]);
+                    const hEnd = parseInt(hours[1]);
+                    if (hour >= hStart && hour < hEnd) {
+                        rowData = data[i];
+                        break;
+                    }
+                }
+            }
+
+            if (!rowData) return ["-"];
+
+            const present = [];
+            for (let j = colStart; j < colEnd; j++) {
+                const val = rowData[j];
+                if (val && val !== "" && val.toLowerCase() !== "nan" && val.toLowerCase() !== "horas") {
+                    present.push(val);
+                }
+            }
+
+            return [...new Set(present)].sort(); // Deduplicate and sort
+        }
+
+        function updateUI(data) {
+            const now = new Date();
+            const weekday = now.getDay(); // 0 is Sunday, 1 is Monday...
+            const currentHour = now.getHours();
+            
+            document.getElementById('current-time').innerText = `${DAY_NAMES[weekday]}, ${now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+
+            const hoursToReport = [
+                { label: 'HORA PASSADA', hour: (currentHour - 1), type: 'past' },
+                { label: 'AGORA', hour: currentHour, type: 'active' },
+                { label: 'PRÓXIMA HORA', hour: (currentHour + 1), type: 'next' }
+            ];
+
+            const container = document.getElementById('app-container');
+            container.innerHTML = '';
+
+            hoursToReport.forEach(item => {
+                const people = getPeopleForHour(data, weekday, item.hour);
+                const col = document.createElement('div');
+                col.className = `column ${item.type === 'active' ? 'active' : ''}`;
+                
+                const h2 = document.createElement('h2');
+                h2.innerText = item.label;
+                
+                const span = document.createElement('span');
+                span.className = 'time-range';
+                span.innerText = `${item.hour.toString().padStart(2, '0')}:00 - ${(item.hour + 1).toString().padStart(2, '0')}:00`;
+                
+                const ul = document.createElement('ul');
+                ul.className = 'presence-list';
+                
+                if (people.length === 0 || people[0] === "-") {
+                    const li = document.createElement('li');
+                    li.innerText = "Ninguém escalado";
+                    li.style.opacity = "0.5";
+                    ul.appendChild(li);
+                } else {
+                    people.forEach(p => {
+                        const li = document.createElement('li');
+                        li.innerText = p;
+                        ul.appendChild(li);
+                    });
+                }
+
+                col.appendChild(h2);
+                col.appendChild(span);
+                col.appendChild(ul);
+                container.appendChild(col);
+            });
+        }
+
+        async function init() {
+            const data = await fetchData();
+            if (data) {
+                updateUI(data);
+                // Refresh data every hour, update clock every minute
+                setInterval(() => updateUI(data), 60000); 
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
