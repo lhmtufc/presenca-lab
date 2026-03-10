@@ -148,16 +148,17 @@
 
         .container {
             width: 100%;
-            max-width: 1200px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
             gap: 1.5rem;
         }
 
         .column {
             background: var(--glass);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
             border-radius: 1.5rem;
             padding: 1.5rem;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -166,12 +167,6 @@
         .column:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-        }
-
-        .column.active {
-            border: 2px solid var(--primary);
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
-            transform: scale(1.05);
         }
 
         h2 {
@@ -499,28 +494,29 @@
             const container = document.getElementById('app-container');
             container.innerHTML = '';
 
-            [hour - 1, hour, hour + 1].forEach((h, idx) => {
-                const labels = isRealTime ? ['HORA PASSADA', 'AGORA', 'PRÓXIMA HORA'] : ['HORA ANTERIOR', 'HORÁRIO SELECIONADO', 'HORA SEGUINTE'];
-                const people = getPeopleForHour(data, (weekday === 0 || weekday === 6) ? 1 : weekday, h);
-                const col = document.createElement('div');
-                col.className = `column ${idx === 1 ? 'active' : ''}`;
-                col.innerHTML = `<h2>${labels[idx]}</h2><span class="time-range">${h.toString().padStart(2, '0')}:00 - ${(h + 1).toString().padStart(2, '0')}:00</span><ul class="presence-list"></ul>`;
-                const ul = col.querySelector('ul');
-                if (people.length === 0) {
-                    ul.innerHTML = '<li style="opacity:0.5; font-size:0.9rem;">Ninguém escalado</li>';
-                } else {
-                    people.forEach(name => {
-                        const li = document.createElement('li');
-                        let html = `<div class="person-name">${name}</div>`;
-                        const tasks = cachedTasks[name] || [];
-                        if (tasks.length > 0) {
-                            html += '<div class="task-container">' + tasks.map(t => `<div class="task-item"><span class="project-tag">${t.project}</span> ${t.task}</div>`).join('') + '</div>';
-                        }
-                        li.innerHTML = html; ul.appendChild(li);
-                    });
-                }
-                container.appendChild(col);
-            });
+            const effectiveDay = (weekday === 0 || weekday === 6) ? 1 : weekday;
+            const people = getPeopleForHour(data, effectiveDay, hour);
+
+            const label = isRealTime ? 'AGORA' : 'HORÁRIO SELECIONADO';
+            const col = document.createElement('div');
+            col.className = 'column';
+            col.innerHTML = `<h2>${label}</h2><span class="time-range">${hour.toString().padStart(2, '0')}:00 - ${(hour + 1).toString().padStart(2, '0')}:00</span><ul class="presence-list"></ul>`;
+            const ul = col.querySelector('ul');
+
+            if (people.length === 0) {
+                ul.innerHTML = '<li style="opacity:0.5; font-size:0.9rem;">Ninguém escalado</li>';
+            } else {
+                people.forEach(name => {
+                    const li = document.createElement('li');
+                    let html = `<div class="person-name">${name}</div>`;
+                    const tasks = cachedTasks[name] || [];
+                    if (tasks.length > 0) {
+                        html += '<div class="task-container">' + tasks.map(t => `<div class="task-item"><span class="project-tag">${t.project}</span> ${t.task}</div>`).join('') + '</div>';
+                    }
+                    li.innerHTML = html; ul.appendChild(li);
+                });
+            }
+            container.appendChild(col);
         }
 
         async function init() {
