@@ -432,11 +432,16 @@
                     const row = data[i];
                     if (row.length < 5) continue;
                     const task = row[2], resp = row[4];
+                    const finished = row.length > 9 ? row[9] : "";
+
                     // Ignora cabeçalhos ou linhas inválidas
                     if (task && resp &&
                         resp.toLowerCase() !== "responsavel" &&
                         task.toLowerCase() !== "descrição da tarefa" &&
                         task.length > 1) {
+
+                        // Ignorar se a tarefa está finalizada ('OK')
+                        if (finished && finished.toLowerCase().trim() === "ok") continue;
 
                         resp.split(',').forEach(n => {
                             const name = n.trim().replace(/^"|"$/g, '').trim();
