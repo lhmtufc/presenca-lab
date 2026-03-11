@@ -2,6 +2,10 @@ import pandas as pd
 from datetime import datetime
 import os
 import re
+import unicodedata
+
+def clean_name(name):
+    return ''.join(c for c in unicodedata.normalize('NFD', name) if unicodedata.category(c) != 'Mn').lower().strip()
 
 SHEET_ID = '1RX6L8yxukcRhLoih3gH6BUsrx4JgZeIG4duKSu8ciIU'
 URL_HORARIOS = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1651859946"
@@ -29,11 +33,12 @@ def get_tasks_from_sheets():
                     
                     for name in [n.strip() for n in resp.split(',')]:
                         if name and len(name) > 1:
-                            if name not in tasks:
-                                tasks[name] = []
+                            cname = clean_name(name)
+                            if cname not in tasks:
+                                tasks[cname] = []
                             # Previne duplicatas
-                            if not any(t["task"] == task for t in tasks[name]):
-                                tasks[name].append({"project": proj, "task": task})
+                            if not any(t["task"] == task for t in tasks[cname]):
+                                tasks[cname].append({"project": proj, "task": task})
         except Exception as e:
             print(f"Erro ao obter tarefas de {proj}: {e}")
     return tasks
@@ -109,8 +114,9 @@ def get_present_people():
             print("\nPessoas presentes agora:")
             for p in sorted(list(set(present))):
                 print(f"\n- {p}")
-                if p in tasks_map:
-                    for t in tasks_map[p]:
+                cname = clean_name(p)
+                if cname in tasks_map:
+                    for t in tasks_map[cname]:
                         print(f"  [{t['project']}] {t['task'].replace(chr(10), ' ')}")
         else:
             print("\nNinguém está listado como presente neste horário.")

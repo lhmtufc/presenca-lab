@@ -4,6 +4,10 @@ import os
 import re
 import tkinter as tk
 from tkinter import ttk
+import unicodedata
+
+def clean_name(name):
+    return ''.join(c for c in unicodedata.normalize('NFD', name) if unicodedata.category(c) != 'Mn').lower().strip()
 
 SHEET_ID = '1RX6L8yxukcRhLoih3gH6BUsrx4JgZeIG4duKSu8ciIU'
 URL_HORARIOS = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1651859946"
@@ -31,9 +35,10 @@ def get_tasks_from_sheets():
                             
                     for name in [n.strip() for n in resp.split(',')]:
                         if name and len(name) > 1:
-                            if name not in tasks: tasks[name] = []
-                            if not any(t["task"] == task for t in tasks[name]):
-                                tasks[name].append({"project": proj, "task": task})
+                            cname = clean_name(name)
+                            if cname not in tasks: tasks[cname] = []
+                            if not any(t["task"] == task for t in tasks[cname]):
+                                tasks[cname].append({"project": proj, "task": task})
         except Exception as e:
             pass # Silently fail
     return tasks
@@ -185,8 +190,9 @@ class PresenceApp:
                 lb.delete(0, tk.END)
                 for p in people:
                     lb.insert(tk.END, f"  • {p}")
-                    if p in tasks_map:
-                        for t in tasks_map[p]:
+                    cname = clean_name(p)
+                    if cname in tasks_map:
+                        for t in tasks_map[cname]:
                             task_desc = t['task'].replace(chr(10), ' ')
                             lb.insert(tk.END, f"      [{t['project']}] {task_desc}")
                         lb.insert(tk.END, "") # blank line

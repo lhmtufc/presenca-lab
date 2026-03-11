@@ -444,11 +444,12 @@
                         if (finished && finished.toLowerCase().trim() === "ok") continue;
 
                         resp.split(',').forEach(n => {
-                            const name = n.trim().replace(/^"|"$/g, '').trim();
-                            if (name && name.length > 1) {
-                                if (!taskMap[name]) taskMap[name] = [];
-                                if (!taskMap[name].find(t => t.task === task)) {
-                                    taskMap[name].push({ task, project: proj });
+                            const rawName = n.trim().replace(/^"|"$/g, '').trim();
+                            if (rawName && rawName.length > 1) {
+                                const cleanName = rawName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                                if (!taskMap[cleanName]) taskMap[cleanName] = [];
+                                if (!taskMap[cleanName].find(t => t.task === task)) {
+                                    taskMap[cleanName].push({ task, project: proj });
                                 }
                             }
                         });
@@ -512,9 +513,10 @@
                 ul.innerHTML = '<li style="opacity:0.5; font-size:0.9rem;">Ninguém escalado</li>';
             } else {
                 people.forEach(name => {
+                    const cleanName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
                     const li = document.createElement('li');
                     let html = `<div class="person-name">${name}</div>`;
-                    const tasks = cachedTasks[name] || [];
+                    const tasks = cachedTasks[cleanName] || [];
                     if (tasks.length > 0) {
                         html += '<div class="task-container">' + tasks.map(t => `<div class="task-item"><span class="project-tag">${t.project}</span> ${t.task}</div>`).join('') + '</div>';
                     }
