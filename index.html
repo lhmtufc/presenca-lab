@@ -268,15 +268,22 @@
 
         .task-deadline {
             font-size: 0.65rem;
-            color: #ef4444;
+            color: var(--secondary);
             font-weight: bold;
             margin-top: 2px;
         }
 
         .status-atrasado { border-left-color: #ef4444 !important; }
+        .status-atrasado .task-deadline { color: #ef4444; }
+        
         .status-urgente { border-left-color: #f59e0b !important; } /* Laranja */
+        .status-urgente .task-deadline { color: #f59e0b; }
+        
         .status-em-dia { border-left-color: #22c55e !important; } /* Verde */
+        .status-em-dia .task-deadline { color: #22c55e; }
+        
         .status-sem-prazo { border-left-color: #38bdf8 !important; } /* Azul */
+        .status-sem-prazo .task-deadline { color: var(--primary); }
 
         .priority-tag {
             font-size: 0.65rem;
