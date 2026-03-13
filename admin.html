@@ -137,12 +137,14 @@
             padding: 1rem;
             border-radius: 0.8rem;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 4px;
             border: 1px solid rgba(255,255,255,0.05);
         }
 
-        .task-info b { color: var(--primary); margin-right: 5px; }
+        .task-row-project { color: var(--primary); font-weight: 700; font-size: 0.8rem; }
+        .task-row-desc { font-size: 0.9rem; }
+        .task-row-actions { display: flex; gap: 5px; margin-top: 4px; }
 
         .btn-edit {
             padding: 0.5rem 1rem;
@@ -212,15 +214,20 @@
         #pass-error { color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
 
         /* Estilos para a Grade de Escalas */
-        .schedule-grid {
-            display: grid;
-            grid-template-columns: 80px repeat(5, 1fr);
-            gap: 5px;
+        .schedule-grid-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             margin-top: 1rem;
             background: rgba(0,0,0,0.2);
             padding: 10px;
             border-radius: 0.5rem;
             border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 44px repeat(5, 1fr);
+            gap: 4px;
         }
         .grid-header { text-align: center; font-size: 0.7rem; color: var(--primary); font-weight: 800; padding: 5px; }
         .grid-time { font-size: 0.7rem; color: var(--secondary); display: flex; align-items: center; justify-content: center; }
@@ -283,7 +290,7 @@
                 <div id="participant-selectors"></div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
                 <div class="form-group">
                     <label>Data de Início</label>
                     <input type="date" id="task-start">
@@ -317,7 +324,7 @@
                 <select id="schedule-bolsista-select" onchange="loadBolsistaSchedule()"></select>
             </div>
             <p style="font-size: 0.7rem; color: var(--secondary); margin-bottom: 0.5rem; text-align: center;">Clique nos blocos para adicionar ou remover horários</p>
-            <div id="admin-schedule-grid" class="schedule-grid"></div>
+            <div class="schedule-grid-wrapper"><div id="admin-schedule-grid" class="schedule-grid"></div></div>
             <div id="schedule-save-container" style="display:none; margin-top: 1.5rem; gap: 10px;">
                 <button class="btn-action" onclick="saveBolsistaSchedule()" style="background: var(--accent); color: white;">Confirmar Alterações de Horário</button>
                 <button class="btn-action btn-secondary" onclick="loadBolsistaSchedule()" style="margin-top:0;">Descartar Rascunho</button>
@@ -559,8 +566,9 @@
             const activeContainer = document.getElementById('tasks-active');
             activeContainer.innerHTML = activeTasks.map(t => `
                 <div class="task-row">
-                    <div class="task-info"><b>[${t.projetos?.nome || '?'}]</b> ${t.descricao}</div>
-                    <div style="display:flex; gap:5px;">
+                    <div class="task-row-project">[${t.projetos?.nome || '?'}]</div>
+                    <div class="task-row-desc">${t.descricao}</div>
+                    <div class="task-row-actions">
                         <button class="btn-edit btn-finish-quick" onclick="finishTaskQuickly('${t.id}', '${t.descricao.replace(/'/g, "\\'")}')" title="Concluir">✓</button>
                         <button class="btn-edit" onclick="prepareEdit(${JSON.stringify(t).replace(/"/g, '&quot;')})">Editar</button>
                         <button class="btn-edit btn-delete" onclick="deleteTask('${t.id}')">🗑️</button>
@@ -571,8 +579,9 @@
             const finishedContainer = document.getElementById('tasks-finished');
             finishedContainer.innerHTML = finishedTasks.map(t => `
                 <div class="task-row">
-                    <div class="task-info" style="text-decoration:line-through;"><b>[${t.projetos?.nome || '?'}]</b> ${t.descricao}</div>
-                    <div style="display:flex; gap:5px;">
+                    <div class="task-row-project" style="text-decoration:line-through;">[${t.projetos?.nome || '?'}]</div>
+                    <div class="task-row-desc" style="text-decoration:line-through;">${t.descricao}</div>
+                    <div class="task-row-actions">
                         <button class="btn-edit btn-reopen" onclick="reopenTask('${t.id}')">Reabrir</button>
                         <button class="btn-edit btn-delete" onclick="deleteTask('${t.id}')">🗑️</button>
                     </div>
@@ -582,8 +591,9 @@
             const exContainer = document.getElementById('tasks-excluida');
             exContainer.innerHTML = deletedTasks.map(t => `
                 <div class="task-row">
-                    <div class="task-info"><b>[${t.projetos?.nome || '?'}]</b> ${t.descricao}</div>
-                    <button class="btn-edit btn-restore" onclick="restoreTask('${t.id}')">Restaurar</button>
+                    <div class="task-row-project">[${t.projetos?.nome || '?'}]</div>
+                    <div class="task-row-desc">${t.descricao}</div>
+                    <div class="task-row-actions"><button class="btn-edit btn-restore" onclick="restoreTask('${t.id}')">Restaurar</button></div>
                 </div>
             `).join('');
             if (deletedTasks.length === 0) exContainer.innerHTML = '<p style="font-size:0.7rem; text-align:center;">Lixeira vazia</p>';

@@ -9,7 +9,8 @@
       "Bash(gh api repos/schembekufc/presenca-lab/pages)",
       "Bash(git checkout master)",
       "Bash(git merge database-version)",
-      "Bash(git push origin master)"
+      "Bash(git push origin master)",
+      "Bash(git add index.html)"
     ]
   }
 }
