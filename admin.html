@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Lab 718</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #38bdf8;
+            --secondary: #94a3b8;
+            --text: #f8fafc;
+            --accent: #22c55e;
+            --glass: rgba(30, 41, 59, 0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            background-image: radial-gradient(circle at top right, #1e3a8a, transparent),
+                radial-gradient(circle at bottom left, #1e1b4b, transparent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        #login-screen {
+            text-align: center;
+            max-width: 350px;
+        }
+
+        #admin-content {
+            display: none;
+        }
+
+        h1, h2, h3 { margin-bottom: 1.5rem; }
+        
+        h1 {
+            font-size: 2rem;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--secondary); font-weight: 600; }
+        
+        input, select {
+            width: 100%;
+            padding: 0.8rem;
+            background: #2d3748;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.5rem;
+            color: white;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: #0f172a;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 1rem;
+        }
+
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4); }
+        .btn-action:active { transform: translateY(0); }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 0.5rem;
+        }
+
+        #participant-selectors {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .admin-section-divider {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 2rem 0 1rem 0;
+            padding-top: 1rem;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--primary);
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .task-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .task-row {
+            background: rgba(255,255,255,0.03);
+            padding: 1rem;
+            border-radius: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .task-info b { color: var(--primary); margin-right: 5px; }
+
+        .btn-edit {
+            padding: 0.5rem 1rem;
+            background: var(--primary);
+            color: #0f172a;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-restore {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-finish-quick {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-finish-quick:hover {
+            background: #22c55e;
+            color: white;
+        }
+
+        .btn-reopen {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .header-nav {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .btn-back {
+            color: var(--secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+
+        .btn-back:hover { color: var(--text); }
+        
+        #pass-error { color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
+
+        /* Estilos para a Grade de Escalas */
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(5, 1fr);
+            gap: 5px;
+            margin-top: 1rem;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .grid-header { text-align: center; font-size: 0.7rem; color: var(--primary); font-weight: 800; padding: 5px; }
+        .grid-time { font-size: 0.7rem; color: var(--secondary); display: flex; align-items: center; justify-content: center; }
+        .grid-cell {
+            height: 30px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.02);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            color: transparent;
+        }
+        .grid-cell:hover { background: rgba(255,255,255,0.1); border-color: var(--primary); }
+        .grid-cell.active { background: var(--accent); color: white; border-color: var(--accent); font-weight: bold; }
+        .grid-cell.pending-add { background: #f59e0b; color: white; border-color: #f59e0b; animation: pulse 1.5s infinite; }
+        .grid-cell.pending-remove { background: #ef4444; color: white; border-color: #ef4444; text-decoration: line-through; }
+        .grid-cell.loading { opacity: 0.5; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header-nav">
+        <a href="index.html" class="btn-back">← Voltar ao Painel</a>
+        <h1>Administração</h1>
+    </div>
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="container">
+        <h3>Acesso Restrito</h3>
+        <div class="form-group">
+            <input type="password" id="admin-pass" placeholder="Senha de Acesso">
+            <p id="pass-error">Senha incorreta!</p>
+        </div>
+        <button class="btn-action" id="login-btn">Entrar</button>
+    </div>
+
+    <!-- Conteúdo Admin -->
+    <div id="admin-content" class="container">
+        
+        <div class="admin-section-divider">Gerenciar Tarefas</div>
+        <button class="btn-action btn-secondary" id="btn-toggle-task-form" onclick="toggleTaskForm()" style="margin-bottom: 2rem;">+ Criar Nova Tarefa</button>
+
+        <div id="task-form-section" style="display: none; background: rgba(0,0,0,0.1); padding: 1.5rem; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 2.5rem;">
+            <div class="form-group">
+                <label>Projeto</label>
+                <select id="task-project"></select>
+            </div>
+
+            <div class="form-group">
+                <label>O que precisa ser feito?</label>
+                <input type="text" id="task-desc" placeholder="Descrição da tarefa">
+            </div>
+
+            <div class="form-group">
+                <label>Responsáveis</label>
+                <div id="participant-selectors"></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group">
+                    <label>Data de Início</label>
+                    <input type="date" id="task-start">
+                </div>
+                <div class="form-group">
+                    <label>Prazo Final (Opcional)</label>
+                    <input type="date" id="task-deadline">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Prioridade</label>
+                <select id="task-priority">
+                    <option value="baixa">Baixa</option>
+                    <option value="media" selected>Média</option>
+                    <option value="alta">Alta</option>
+                </select>
+            </div>
+
+            <button class="btn-action" id="save-task-btn">Salvar Tarefa</button>
+            <button class="btn-action btn-secondary" id="cancel-edit-btn" style="display: none;">Cancelar Edição</button>
+            <button class="btn-action" id="finish-task-btn" style="display: none; background: var(--accent); color: white;">Tarefa Concluída</button>
+        </div>
+
+        <div class="admin-section-divider">Horários Individuais</div>
+        <button class="btn-action btn-secondary" onclick="toggleScheduleAdmin()" style="margin-bottom: 2rem;">Gerenciar Horários (Escalas)</button>
+
+        <div id="schedule-admin-section" style="display: none; background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 2rem;">
+            <div class="form-group">
+                <label>Selecione o Bolsista</label>
+                <select id="schedule-bolsista-select" onchange="loadBolsistaSchedule()"></select>
+            </div>
+            <p style="font-size: 0.7rem; color: var(--secondary); margin-bottom: 0.5rem; text-align: center;">Clique nos blocos para adicionar ou remover horários</p>
+            <div id="admin-schedule-grid" class="schedule-grid"></div>
+            <div id="schedule-save-container" style="display:none; margin-top: 1.5rem; gap: 10px;">
+                <button class="btn-action" onclick="saveBolsistaSchedule()" style="background: var(--accent); color: white;">Confirmar Alterações de Horário</button>
+                <button class="btn-action btn-secondary" onclick="loadBolsistaSchedule()" style="margin-top:0;">Descartar Rascunho</button>
+            </div>
+        </div>
+
+        <div class="admin-section-divider">Tarefas Ativas</div>
+        <div id="tasks-active" class="task-list"></div>
+
+        <div class="admin-section-divider">Concluídas Recentemente</div>
+        <div id="tasks-finished" class="task-list" style="opacity: 0.6;"></div>
+
+        <div style="margin-top: 2rem; text-align: center;">
+            <button class="btn-action btn-secondary" style="width: auto; font-size: 0.8rem; padding: 5px 15px;" onclick="toggleTrash()">Ver Lixeira (Tarefas Excluídas)</button>
+        </div>
+        <div id="trash-section" style="display: none; border: 1px dashed rgba(255,0,0,0.2); border-radius: 1rem; padding: 1rem; margin-top: 1rem;">
+            <p style="font-size: 0.7rem; color: #ef4444; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Recipientes de Backup (Lixeira)</p>
+            <div id="tasks-excluida" class="task-list" style="opacity: 0.5;"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://vnodbsefjwvapvtdzgdl.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZub2Ric2Vmand2YXB2dGR6Z2RsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNzI5NTMsImV4cCI6MjA4ODk0ODk1M30.M-7v57-obulKagTn-p5Pp6oKJWwcuu5FIvSLJ6andvs';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let activeTasks = [];
+        let finishedTasks = [];
+        let deletedTasks = [];
+        let allParticipants = [];
+        let originalScales = []; // Horários vindos do banco
+        let pendingScales = [];  // Rascunho local sugerido
+        let projectsList = [];
+        let editingTaskId = null;
+        let isAuthenticated = sessionStorage.getItem('isAdminAuthenticated') === 'true';
+
+        // Login Logic
+        const loginBtn = document.getElementById('login-btn');
+        const passInput = document.getElementById('admin-pass');
+        const passError = document.getElementById('pass-error');
+
+        function checkAuth() {
+            if (isAuthenticated) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('admin-content').style.display = 'block';
+                init();
+            }
+        }
+
+        loginBtn.onclick = () => {
+            if (passInput.value === '0718') {
+                isAuthenticated = true;
+                sessionStorage.setItem('isAdminAuthenticated', 'true');
+                checkAuth();
+            } else {
+                passError.style.display = 'block';
+            }
+        };
+
+        passInput.onkeydown = (e) => { if (e.key === 'Enter') loginBtn.click(); };
+
+        // Data Logic
+        async function loadData() {
+            const { data: projs } = await supabaseClient.from('projetos').select('*').order('nome');
+            projectsList = projs || [];
+            const select = document.getElementById('task-project');
+            select.innerHTML = '<option value="">-- Selecione um projeto --</option>' + projectsList.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+            select.innerHTML += '<option value="NEW_PROJECT">+ Novo Projeto...</option>';
+
+            const { data: parts } = await supabaseClient.from('bolsistas').select('*').order('nome');
+            allParticipants = parts || [];
+            renderParticipants();
+
+            // Popular select de horários
+            const schedSelect = document.getElementById('schedule-bolsista-select');
+            schedSelect.innerHTML = '<option value="">-- Selecione um bolsista --</option>' + 
+                allParticipants.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+            
+            const grid = document.getElementById('admin-schedule-grid');
+            grid.innerHTML = '<div style="grid-column: span 6; text-align: center; padding: 20px; font-size: 0.8rem; opacity: 0.5;">Selecione um bolsista acima para editar a escala.</div>';
+
+            // Definir data padrão de início como hoje
+            document.getElementById('task-start').value = new Date().toISOString().split('T')[0];
+        }
+
+        async function loadBolsistaSchedule() {
+            const bolsistaId = document.getElementById('schedule-bolsista-select').value;
+            const grid = document.getElementById('admin-schedule-grid');
+            const saveBtnCont = document.getElementById('schedule-save-container');
+
+            if (!bolsistaId) {
+                grid.innerHTML = '<div style="grid-column: span 6; text-align: center; padding: 20px; font-size: 0.8rem; opacity: 0.5;">Selecione um bolsista acima para editar a escala.</div>';
+                saveBtnCont.style.display = 'none';
+                return;
+            }
+
+            grid.innerHTML = '<div style="grid-column: span 6; text-align: center; padding: 20px; font-size: 0.8rem;">Carregando escala...</div>';
+            saveBtnCont.style.display = 'none';
+
+            const { data } = await supabaseClient.from('escalas').select('*').eq('bolsista_id', bolsistaId);
+            originalScales = data || [];
+            pendingScales = JSON.parse(JSON.stringify(originalScales)); // Clonar para o rascunho
+            renderScheduleGrid();
+        }
+
+        function renderScheduleGrid() {
+            const grid = document.getElementById('admin-schedule-grid');
+            const saveBtnCont = document.getElementById('schedule-save-container');
+            
+            let html = '<div></div>'; 
+            const days = ["SEG", "TER", "QUA", "QUI", "SEX"];
+            days.forEach(d => html += `<div class="grid-header">${d}</div>`);
+
+            for (let h = 8; h <= 19; h++) {
+                html += `<div class="grid-time">${h}:00</div>`;
+                for (let d = 1; d <= 5; d++) {
+                    const isOriginal = originalScales.some(s => s.dia_semana === d && h >= s.hora_inicio && h < s.hora_fim);
+                    const isPending = pendingScales.some(s => s.dia_semana === d && h >= s.hora_inicio && h < s.hora_fim);
+                    
+                    let cellClass = "";
+                    let cellText = "";
+                    
+                    if (isOriginal && isPending) { cellClass = "active"; cellText = "OK"; }
+                    else if (!isOriginal && isPending) { cellClass = "pending-add"; cellText = "+"; }
+                    else if (isOriginal && !isPending) { cellClass = "pending-remove"; cellText = "X"; }
+
+                    html += `<div class="grid-cell ${cellClass}" onclick="toggleHourDraft(${d}, ${h})">${cellText}</div>`;
+                }
+            }
+            grid.innerHTML = html;
+
+            // Mostrar botão de salvar apenas se houver diferenças
+            const hasChanges = JSON.stringify(originalScales.sort((a,b)=>a.dia_semana-b.dia_semana || a.hora_inicio-b.hora_inicio)) !== 
+                               JSON.stringify(pendingScales.sort((a,b)=>a.dia_semana-b.dia_semana || a.hora_inicio-b.hora_inicio));
+            saveBtnCont.style.display = hasChanges ? 'flex' : 'none';
+        }
+
+        function toggleHourDraft(day, hour) {
+            const idx = pendingScales.findIndex(s => s.dia_semana === day && hour >= s.hora_inicio && hour < s.hora_fim);
+            
+            if (idx > -1) {
+                pendingScales.splice(idx, 1);
+            } else {
+                pendingScales.push({ dia_semana: day, hora_inicio: hour, hora_fim: hour + 1 });
+            }
+            renderScheduleGrid();
+        }
+
+        async function saveBolsistaSchedule() {
+            const bolsistaId = document.getElementById('schedule-bolsista-select').value;
+            if (!bolsistaId) return;
+
+            try {
+                // 1. Identificar o que remover e o que adicionar
+                const toRemove = originalScales.filter(o => !pendingScales.some(p => p.dia_semana === o.dia_semana && p.hora_inicio === o.hora_inicio));
+                const toAdd = pendingScales.filter(p => !originalScales.some(o => o.dia_semana === p.dia_semana && o.hora_inicio === p.hora_inicio));
+
+                if (toRemove.length > 0) {
+                    await supabaseClient.from('escalas').delete().in('id', toRemove.map(r => r.id));
+                }
+
+                if (toAdd.length > 0) {
+                    await supabaseClient.from('escalas').insert(toAdd.map(a => ({ 
+                        bolsista_id: bolsistaId, 
+                        dia_semana: a.dia_semana, 
+                        hora_inicio: a.hora_inicio, 
+                        hora_fim: a.hora_fim 
+                    })));
+                }
+
+                alert("Escala atualizada com sucesso!");
+                await loadBolsistaSchedule(); // Recarregar do banco
+            } catch (e) { alert("Erro ao salvar escala: " + e.message); }
+        }
+
+        function toggleScheduleAdmin() {
+            const el = document.getElementById('schedule-admin-section');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleTaskForm() {
+            const el = document.getElementById('task-form-section');
+            const btn = document.getElementById('btn-toggle-task-form');
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                btn.innerText = 'Fechar Formulário';
+            } else {
+                if (editingTaskId) {
+                    cancelEdit();
+                } else {
+                    el.style.display = 'none';
+                    btn.innerText = '+ Criar Nova Tarefa';
+                }
+            }
+        }
+
+        async function updateTasks() {
+            const { data: active } = await supabaseClient.from('tarefas').select('*, projetos(nome)')
+                .not('status', 'in', '("concluida","excluida")');
+            
+            if (active) {
+                const priorityWeight = { 'alta': 1, 'media': 2, 'baixa': 3 };
+                active.sort((a, b) => {
+                    const pa = priorityWeight[a.prioridade?.toLowerCase()] || 4;
+                    const pb = priorityWeight[b.prioridade?.toLowerCase()] || 4;
+                    if (pa !== pb) return pa - pb;
+                    const projA = (a.projetos?.nome || "").toLowerCase();
+                    const projB = (b.projetos?.nome || "").toLowerCase();
+                    if (projA !== projB) return projA.localeCompare(projB);
+                    return (a.descricao || "").toLowerCase().localeCompare((b.descricao || "").toLowerCase());
+                });
+            }
+            activeTasks = active || [];
+
+            const { data: done } = await supabaseClient.from('tarefas').select('*, projetos(nome)')
+                .eq('status', 'concluida')
+                .order('created_at', { ascending: false }).limit(15);
+            finishedTasks = done || [];
+
+            const { data: trash } = await supabaseClient.from('tarefas').select('*, projetos(nome)')
+                .eq('status', 'excluida')
+                .order('created_at', { ascending: false });
+            deletedTasks = trash || [];
+        }
+
+        function renderParticipants() {
+            const container = document.getElementById('participant-selectors');
+            container.innerHTML = allParticipants.map(p => `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; flex:1;">
+                        <input type="checkbox" class="resp-checkbox" value="${p.nome}" style="width:auto;"> ${p.nome}
+                    </label>
+                    <span onclick="renameBolsista('${p.id}', '${p.nome}')" style="cursor:pointer; opacity:0.5;">✏️</span>
+                </div>
+            `).join('') + `<div onclick="addBolsista()" style="text-align:center; color:var(--primary); cursor:pointer; padding:10px; border:1px dashed var(--primary); margin-top:10px; border-radius:8px;">+ Adicionar Bolsista</div>`;
+        }
+
+        function renderTasks() {
+            const activeContainer = document.getElementById('tasks-active');
+            activeContainer.innerHTML = activeTasks.map(t => `
+                <div class="task-row">
+                    <div class="task-info"><b>[${t.projetos?.nome || '?'}]</b> ${t.descricao}</div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn-edit btn-finish-quick" onclick="finishTaskQuickly('${t.id}', '${t.descricao.replace(/'/g, "\\'")}')" title="Concluir">✓</button>
+                        <button class="btn-edit" onclick="prepareEdit(${JSON.stringify(t).replace(/"/g, '&quot;')})">Editar</button>
+                        <button class="btn-edit btn-delete" onclick="deleteTask('${t.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+
+            const finishedContainer = document.getElementById('tasks-finished');
+            finishedContainer.innerHTML = finishedTasks.map(t => `
+                <div class="task-row">
+                    <div class="task-info" style="text-decoration:line-through;"><b>[${t.projetos?.nome || '?'}]</b> ${t.descricao}</div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn-edit btn-reopen" onclick="reopenTask('${t.id}')">Reabrir</button>
+                        <button class="btn-edit btn-delete" onclick="deleteTask('${t.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+
+            const exContainer = document.getElementById('tasks-excluida');
+            exContainer.innerHTML = deletedTasks.map(t => `
+                <div class="task-row">
+                    <div class="task-info"><b>[${t.projetos?.nome || '?'}]</b> ${t.descricao}</div>
+                    <button class="btn-edit btn-restore" onclick="restoreTask('${t.id}')">Restaurar</button>
+                </div>
+            `).join('');
+            if (deletedTasks.length === 0) exContainer.innerHTML = '<p style="font-size:0.7rem; text-align:center;">Lixeira vazia</p>';
+        }
+
+        function toggleTrash() {
+            const el = document.getElementById('trash-section');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function prepareEdit(task) {
+            editingTaskId = task.id;
+            document.getElementById('task-project').value = task.projeto_id;
+            document.getElementById('task-desc').value = task.descricao;
+            document.getElementById('task-start').value = task.data_inicio || '';
+            document.getElementById('task-deadline').value = task.prazo || '';
+            document.getElementById('task-priority').value = task.prioridade || 'media';
+            document.querySelectorAll('.resp-checkbox').forEach(cb => cb.checked = (task.responsaveis || []).includes(cb.value));
+            
+            // Garantir que o formulário esteja visível ao editar
+            document.getElementById('task-form-section').style.display = 'block';
+            document.getElementById('btn-toggle-task-form').innerText = 'Editando Tarefa';
+            
+            document.getElementById('save-task-btn').innerText = 'Salvar Alterações';
+            document.getElementById('cancel-edit-btn').style.display = 'block';
+            document.getElementById('finish-task-btn').style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingTaskId = null;
+            document.getElementById('task-desc').value = '';
+            document.getElementById('task-start').value = new Date().toISOString().split('T')[0];
+            document.getElementById('task-deadline').value = '';
+            document.getElementById('task-priority').value = 'media';
+            document.querySelectorAll('.resp-checkbox').forEach(cb => cb.checked = false);
+            
+            document.getElementById('task-form-section').style.display = 'none';
+            document.getElementById('btn-toggle-task-form').innerText = '+ Criar Nova Tarefa';
+            
+            document.getElementById('save-task-btn').innerText = 'Salvar Tarefa';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+            document.getElementById('finish-task-btn').style.display = 'none';
+        }
+
+        async function saveTask() {
+            const projeto_id = document.getElementById('task-project').value;
+            const descricao = document.getElementById('task-desc').value.trim();
+            const resps = Array.from(document.querySelectorAll('.resp-checkbox:checked')).map(cb => cb.value);
+            const data_inicio = document.getElementById('task-start').value || new Date().toISOString().split('T')[0];
+            const prazo = document.getElementById('task-deadline').value || null;
+            const prioridade = document.getElementById('task-priority').value;
+
+            if (!descricao || resps.length === 0) return alert("Preencha descrição e responsáveis!");
+
+            try {
+                if (editingTaskId) {
+                    await supabaseClient.from('tarefas').update({ projeto_id, descricao, responsaveis: resps, data_inicio, prazo, prioridade }).eq('id', editingTaskId);
+                } else {
+                    await supabaseClient.from('tarefas').insert([{ projeto_id, descricao, responsaveis: resps, status: 'pendente', data_inicio, prazo, prioridade }]);
+                }
+                cancelEdit();
+                await updateTasks();
+                renderTasks();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function finishTask() {
+            if (!editingTaskId) return;
+            const taskDesc = document.getElementById('task-desc').value;
+            finishTaskQuickly(editingTaskId, taskDesc);
+        }
+
+        async function finishTaskQuickly(id, desc) {
+            if (!confirm(`Marcar "${desc}" como concluída?`)) return;
+            try {
+                const { error } = await supabaseClient.from('tarefas').update({ status: 'concluida' }).eq('id', id);
+                if (error) throw error;
+                if (editingTaskId === id) cancelEdit();
+                await updateTasks();
+                renderTasks();
+            } catch (e) { alert("Erro: " + e.message); }
+        }
+
+        async function deleteTask(id) {
+            if (!confirm("Mover tarefa para a lixeira?")) return;
+            try {
+                // Soft Delete: Apenas muda o status para 'excluida'
+                const { error } = await supabaseClient.from('tarefas').update({ status: 'excluida' }).eq('id', id);
+                if (error) throw error;
+                await updateTasks();
+                renderTasks();
+            } catch (e) { alert("Erro ao mover para lixeira: " + e.message); }
+        }
+
+        async function restoreTask(id) {
+            try {
+                const { error } = await supabaseClient.from('tarefas').update({ status: 'pendente' }).eq('id', id);
+                if (error) throw error;
+                await updateTasks();
+                renderTasks();
+            } catch (e) { alert("Erro ao restaurar: " + e.message); }
+        }
+
+        async function reopenTask(id) {
+            await supabaseClient.from('tarefas').update({ status: 'pendente' }).eq('id', id);
+            await updateTasks();
+            renderTasks();
+        }
+
+        async function addBolsista() {
+            const n = prompt("Nome do bolsista:");
+            if (n) {
+                await supabaseClient.from('bolsistas').insert([{ nome: n, categoria: 'Bolsista' }]);
+                await loadData();
+            }
+        }
+
+        async function renameBolsista(id, old) {
+            const n = prompt("Novo nome:", old);
+            if (n && n !== old) {
+                await supabaseClient.from('bolsistas').update({ nome: n }).eq('id', id);
+                await loadData();
+            }
+        }
+
+        document.getElementById('task-project').onchange = async (e) => {
+            if (e.target.value === 'NEW_PROJECT') {
+                const n = prompt("Nome do projeto:");
+                if (n) {
+                    await supabaseClient.from('projetos').insert([{ nome: n }]);
+                    await loadData();
+                } else { e.target.value = ''; }
+            }
+        };
+
+        document.getElementById('save-task-btn').onclick = saveTask;
+        document.getElementById('cancel-edit-btn').onclick = cancelEdit;
+        document.getElementById('finish-task-btn').onclick = finishTask;
+
+        async function init() {
+            await loadData();
+            await updateTasks();
+            renderTasks();
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>

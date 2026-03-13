@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atividades dos Bolsistas - Lab 718</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -101,6 +102,26 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        .btn-admin {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-admin:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-schedule {
+            background: #818cf8;
+            color: white;
+            border: none;
+        }
+
+        .btn-schedule:hover {
+            background: #6366f1;
         }
 
         .btn-realtime {
@@ -240,7 +261,34 @@
             background: rgba(255, 255, 255, 0.03);
             border-radius: 6px;
             border-left: 2px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
+
+        .task-deadline {
+            font-size: 0.65rem;
+            color: #ef4444;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        .status-atrasado { border-left-color: #ef4444 !important; }
+        .status-urgente { border-left-color: #f59e0b !important; } /* Laranja */
+        .status-em-dia { border-left-color: #22c55e !important; } /* Verde */
+        .status-sem-prazo { border-left-color: #38bdf8 !important; } /* Azul */
+
+        .priority-tag {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 6px;
+            text-transform: uppercase;
+        }
+        .priority-alta { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+        .priority-media { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+        .priority-baixa { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
 
         .project-tag {
             font-size: 0.7rem;
@@ -280,6 +328,90 @@
                 transform: scale(1);
             }
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            padding: 2rem 1rem;
+            overflow-y: auto;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--primary);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+        }
+
+        .individual-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 2rem;
+        }
+
+        .grid-header {
+            font-weight: 700;
+            color: var(--primary);
+            text-align: center;
+            padding: 10px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .grid-time {
+            font-size: 0.8rem;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .grid-cell {
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .cell-active {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            cursor: pointer;
+            color: var(--secondary);
+            font-size: 1.5rem;
+        }
+
+        .individual-selector {
+            background: #2d3748;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            outline: none;
+        }
+
     </style>
 </head>
 
@@ -293,6 +425,8 @@
     <div class="controls-bar">
         <div class="control-group">
             <button id="toggle-mode" class="btn-mode btn-realtime">Modo: Real-Time</button>
+            <button id="btn-view-individual" class="btn-mode btn-schedule">Horário Individual</button>
+            <button id="admin-btn" class="btn-mode btn-admin">Administrador</button>
         </div>
         <div class="control-group">
             <label for="select-day">Dia:</label>
@@ -314,26 +448,35 @@
         <div class="loading">Sincronizando com Google Sheets...</div>
     </div>
 
-    <script>
-        const SHEET_ID = '1RX6L8yxukcRhLoih3gH6BUsrx4JgZeIG4duKSu8ciIU';
-        const GID_HORARIOS = '1651859946';
-        const GID_MONO = '766295141';
-        const GID_VW = '146544989';
-        const GID_BLOCO = '0';
-        const GID_TROCADOR = '790239595';
+    <!-- Modal Horário Individual -->
+    <div id="modal-individual" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" id="close-modal">&times;</span>
+            <h2 id="modal-title" style="margin-bottom: 0.5rem;">Horário Semanal</h2>
+            <div class="control-group" style="justify-content: flex-start; margin-bottom: 1.5rem;">
+                <label>Selecionar Pessoa:</label>
+                <select id="select-person-individual" class="individual-selector"></select>
+            </div>
+            <div class="individual-grid" id="schedule-grid">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
 
-        const URL_HORARIOS = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID_HORARIOS}`;
-        const URL_MONO = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID_MONO}`;
-        const URL_VW = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID_VW}`;
-        const URL_BLOCO = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID_BLOCO}`;
-        const URL_TROCADOR = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID_TROCADOR}`;
 
-        const DAYS_MAP = { 1: [1, 9], 2: [9, 17], 3: [17, 25], 4: [25, 33], 5: [33, 40] };
+    <script>        const SUPABASE_URL = 'https://vnodbsefjwvapvtdzgdl.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZub2Ric2Vmand2YXB2dGR6Z2RsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNzI5NTMsImV4cCI6MjA4ODk0ODk1M30.M-7v57-obulKagTn-p5Pp6oKJWwcuu5FIvSLJ6andvs';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         const DAY_NAMES = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 
-        let cachedTasks = {};
+        let cachedTasks = [];
+        let finishedTasks = [];
+        let allParticipants = [];
+        let projectsList = [];
         let isRealTime = true;
-        let globalSheetData = null;
+        let isAdminAuthenticated = sessionStorage.getItem('isAdminAuthenticated') === 'true';
+        let editingTaskId = null;
 
         const selectDay = document.getElementById('select-day');
         const selectHour = document.getElementById('select-hour');
@@ -353,10 +496,6 @@
                 btnToggle.innerText = "Modo: Real-Time";
                 modeBadge.className = "status-badge badge-live";
                 modeBadge.innerText = "LIVE";
-                const now = new Date();
-                const d = now.getDay();
-                selectDay.value = (d === 0 || d === 6) ? 1 : d;
-                selectHour.value = now.getHours();
             } else {
                 btnToggle.className = "btn-mode btn-consult";
                 btnToggle.innerText = "Voltar ao Real-Time";
@@ -365,144 +504,86 @@
             }
         }
 
-        btnToggle.addEventListener('click', () => {
-            isRealTime = !isRealTime;
-            updateModeUI();
-            if (globalSheetData) updateUI(globalSheetData);
-        });
+        async function loadData() {
+            const { data: projs } = await supabaseClient.from('projetos').select('*').order('nome');
+            projectsList = projs || [];
+            
+            const { data: parts } = await supabaseClient.from('bolsistas').select('*').order('nome');
+            allParticipants = parts || [];
 
-        [selectDay, selectHour].forEach(el => el.addEventListener('change', () => {
-            isRealTime = false;
-            updateModeUI();
-            if (globalSheetData) updateUI(globalSheetData);
-        }));
-
-        async function fetchCSV(url) {
-            try {
-                const response = await fetch(url);
-                const csvText = await response.text();
-                const result = [];
-                let row = [];
-                let cur = '', inQuote = false;
-
-                for (let i = 0; i < csvText.length; i++) {
-                    const char = csvText[i];
-                    const nextChar = csvText[i + 1];
-
-                    if (char === '"') {
-                        if (inQuote && nextChar === '"') {
-                            cur += '"'; i++; // Aspas escapadas
-                        } else {
-                            inQuote = !inQuote;
-                        }
-                    } else if (char === ',' && !inQuote) {
-                        row.push(cur.trim());
-                        cur = '';
-                    } else if ((char === '\n' || char === '\r') && !inQuote) {
-                        if (char === '\r' && nextChar === '\n') i++;
-                        row.push(cur.trim());
-                        if (row.length > 1 || row[0] !== "") result.push(row);
-                        row = []; cur = '';
-                    } else {
-                        cur += char;
-                    }
-                }
-                if (row.length > 0 || cur !== '') {
-                    row.push(cur.trim());
-                    result.push(row);
-                }
-                return result.map(r => r.map(cell => cell.replace(/^"|"$/g, '').trim()));
-            } catch (error) {
-                console.error("Erro ao carregar CSV:", error);
-                return null;
-            }
+            const sel = document.getElementById('select-person-individual');
+            sel.innerHTML = '<option value="">-- Selecione uma pessoa --</option>' + 
+                allParticipants.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+            
+            // Limpar grid inicial
+            document.getElementById('schedule-grid').innerHTML = '<p style="text-align:center; padding:20px; opacity:0.5;">Escolha alguém acima para ver o horário.</p>';
         }
 
         async function updateTasks() {
-            const [monoData, vwData, blocoData, trocadorData] = await Promise.all([
-                fetchCSV(URL_MONO),
-                fetchCSV(URL_VW),
-                fetchCSV(URL_BLOCO),
-                fetchCSV(URL_TROCADOR)
-            ]);
-            const taskMap = {};
-            const processTab = (data, proj) => {
-                if (!data) return;
-                for (let i = 0; i < data.length; i++) {
-                    const row = data[i];
-                    if (row.length < 5) continue;
-                    const task = row[2], resp = row[4];
-                    const finished = row.length > 9 ? row[9] : "";
+            const { data: active } = await supabaseClient
+                .from('tarefas')
+                .select('*, projetos(nome)')
+                .not('status', 'in', '("concluida","excluida")');
+            
+            if (active) {
+                const priorityWeight = { 'alta': 1, 'media': 2, 'baixa': 3 };
+                active.sort((a, b) => {
+                    // 1. Prioridade (Alta > Media > Baixa)
+                    const pa = priorityWeight[a.prioridade?.toLowerCase()] || 4;
+                    const pb = priorityWeight[b.prioridade?.toLowerCase()] || 4;
+                    if (pa !== pb) return pa - pb;
 
-                    // Ignora cabeçalhos ou linhas inválidas
-                    if (task && resp &&
-                        resp.toLowerCase() !== "responsavel" &&
-                        task.toLowerCase() !== "descrição da tarefa" &&
-                        task.length > 1) {
+                    // 2. Projeto (A-Z)
+                    const projA = (a.projetos?.nome || "").toLowerCase();
+                    const projB = (b.projetos?.nome || "").toLowerCase();
+                    if (projA !== projB) return projA.localeCompare(projB);
 
-                        // Ignorar se a tarefa está finalizada ('OK')
-                        if (finished && finished.toLowerCase().trim() === "ok") continue;
-
-                        resp.split(',').forEach(n => {
-                            const rawName = n.trim().replace(/^"|"$/g, '').trim();
-                            if (rawName && rawName.length > 1) {
-                                const cleanName = rawName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-                                if (!taskMap[cleanName]) taskMap[cleanName] = [];
-                                if (!taskMap[cleanName].find(t => t.task === task)) {
-                                    taskMap[cleanName].push({ task, project: proj });
-                                }
-                            }
-                        });
-                    }
-                }
-            };
-            processTab(monoData, "Bancada Mono");
-            processTab(vwData, "Bancada VW");
-            processTab(blocoData, "Bloco Motores");
-            processTab(trocadorData, "Trocador Calor");
-            cachedTasks = taskMap;
+                    // 3. Tarefa (A-Z)
+                    return (a.descricao || "").toLowerCase().localeCompare((b.descricao || "").toLowerCase());
+                });
+            }
+            cachedTasks = active || [];
+        
+            const { data: done } = await supabaseClient
+                .from('tarefas')
+                .select('*, projetos(nome)')
+                .eq('status', 'concluida')
+                .order('created_at', { ascending: false })
+                .limit(20);
+            finishedTasks = done || [];
         }
 
-        function getPeopleForHour(data, weekday, hour) {
-            const range = DAYS_MAP[weekday];
-            if (!range) return [];
-            const [start, end] = range;
-            let rowData = null;
-            for (let i = 0; i < data.length; i++) {
-                const hours = (data[i][0] || "").match(/\d+/g);
-                if (hours && hours.length >= 2 && hour >= parseInt(hours[0]) && hour < parseInt(hours[1])) {
-                    rowData = data[i]; break;
-                }
-            }
-            if (!rowData) return [];
-            const res = [];
-            for (let j = start; j < end; j++) {
-                const v = rowData[j];
-                if (v && v.toLowerCase() !== "nan" && v.toLowerCase() !== "horas") res.push(v);
-            }
-            return [...new Set(res)].sort();
+        async function getPeopleForHour(weekday, hour) {
+            const { data: scales } = await supabaseClient
+                .from('escalas')
+                .select('*, bolsistas(nome)')
+                .eq('dia_semana', weekday)
+                .lte('hora_inicio', hour)
+                .gt('hora_fim', hour);
+            return (scales || []).map(s => s.bolsistas.nome).sort();
         }
 
-        function updateUI(data) {
-            globalSheetData = data;
+        async function updateUI() {
             const now = new Date();
             let weekday = isRealTime ? now.getDay() : parseInt(selectDay.value);
             let hour = isRealTime ? now.getHours() : parseInt(selectHour.value);
 
+            if (weekday === 0 || weekday === 6) weekday = 1;
+
             if (isRealTime) {
                 document.getElementById('current-time').innerText = `${DAY_NAMES[weekday]}, ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-                selectDay.value = (weekday === 0 || weekday === 6) ? 1 : weekday;
+                selectDay.value = weekday;
                 selectHour.value = hour;
             } else {
                 document.getElementById('current-time').innerText = `Consultando: ${DAY_NAMES[weekday]} às ${hour}:00`;
             }
 
             const container = document.getElementById('app-container');
+            container.innerHTML = '<div class="loading">Consultando banco de dados...</div>';
+
+            const people = await getPeopleForHour(weekday, hour);
+            
             container.innerHTML = '';
-
-            const effectiveDay = (weekday === 0 || weekday === 6) ? 1 : weekday;
-            const people = getPeopleForHour(data, effectiveDay, hour);
-
             const label = isRealTime ? 'AGORA' : 'HORÁRIO SELECIONADO';
             const col = document.createElement('div');
             col.className = 'column';
@@ -513,12 +594,30 @@
                 ul.innerHTML = '<li style="opacity:0.5; font-size:0.9rem;">Ninguém escalado</li>';
             } else {
                 people.forEach(name => {
-                    const cleanName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
                     const li = document.createElement('li');
                     let html = `<div class="person-name">${name}</div>`;
-                    const tasks = cachedTasks[cleanName] || [];
+                    const tasks = cachedTasks.filter(t => t.responsaveis.includes(name));
                     if (tasks.length > 0) {
-                        html += '<div class="task-container">' + tasks.map(t => `<div class="task-item"><span class="project-tag">${t.project}</span> ${t.task}</div>`).join('') + '</div>';
+                        html += '<div class="task-container">' + tasks.map(t => {
+                            const prazoDate = t.prazo ? new Date(t.prazo + 'T23:59:59') : null;
+                            const hoje = new Date();
+                            hoje.setHours(0, 0, 0, 0);
+                            
+                            let statusClass = 'status-sem-prazo';
+                            if (prazoDate) {
+                                const diffTime = prazoDate - hoje;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                
+                                if (diffDays < 0) statusClass = 'status-atrasado';
+                                else if (diffDays <= 7) statusClass = 'status-urgente';
+                                else statusClass = 'status-em-dia';
+                            }
+                            
+                            let deadlineHtml = t.prazo ? `<div class="task-deadline">📅 Prazo: ${new Date(t.prazo + 'T12:00:00').toLocaleDateString('pt-BR')}</div>` : '';
+                            let priorityHtml = `<span class="priority-tag priority-${t.prioridade || 'media'}">${t.prioridade || 'média'}</span>`;
+                            
+                            return `<div class="task-item ${statusClass}">${priorityHtml}<span class="project-tag">${t.projetos.nome}</span> ${t.descricao}${deadlineHtml}</div>`;
+                        }).join('') + '</div>';
                     }
                     li.innerHTML = html; ul.appendChild(li);
                 });
@@ -528,15 +627,65 @@
 
         async function init() {
             updateModeUI();
+            await loadData();
             await updateTasks();
-            const data = await fetchCSV(URL_HORARIOS);
-            if (data) {
-                updateUI(data);
-                setInterval(async () => { await updateTasks(); const d = await fetchCSV(URL_HORARIOS); if (d) updateUI(d); }, 300000);
-                setInterval(() => { if (isRealTime) updateUI(globalSheetData); }, 60000);
+            await updateUI();
+            setInterval(async () => { await updateTasks(); await updateUI(); }, 60000);
+        }
+
+        btnToggle.addEventListener('click', () => { isRealTime = !isRealTime; updateModeUI(); updateUI(); });
+        [selectDay, selectHour].forEach(el => el.addEventListener('change', () => { isRealTime = false; updateModeUI(); updateUI(); }));
+
+        const adminBtn = document.getElementById('admin-btn');
+        adminBtn.addEventListener('click', () => { window.location.href = 'admin.html'; });
+
+        // Lógica horários individuais
+        const btnIndividual = document.getElementById('btn-view-individual');
+        const modalIndividual = document.getElementById('modal-individual');
+        const closeModal = document.getElementById('close-modal');
+        const selectIndiv = document.getElementById('select-person-individual');
+
+        btnIndividual.onclick = () => {
+            modalIndividual.style.display = 'flex';
+            renderIndividualSchedule();
+        }
+
+        closeModal.onclick = () => modalIndividual.style.display = 'none';
+        selectIndiv.onchange = () => renderIndividualSchedule();
+
+        async function renderIndividualSchedule() {
+            const personId = selectIndiv.value;
+            const grid = document.getElementById('schedule-grid');
+            
+            if (!personId) {
+                grid.innerHTML = '<p style="text-align:center; padding:20px; opacity:0.5;">Escolha alguém acima para ver o horário.</p>';
+                return;
+            }
+
+            grid.innerHTML = '<div class="loading">Carregando horários...</div>';
+
+            const { data: scales } = await supabaseClient
+                .from('escalas')
+                .select('*')
+                .eq('bolsista_id', personId);
+
+            grid.innerHTML = '<div></div>'; // Espaço vazio no topo esquerdo
+            const dias = ["SEG", "TER", "QUA", "QUI", "SEX"];
+            dias.forEach(d => grid.innerHTML += `<div class="grid-header">${d}</div>`);
+
+            for (let h = 8; h <= 19; h++) {
+                grid.innerHTML += `<div class="grid-time">${h}:00</div>`;
+                for (let d = 1; d <= 5; d++) {
+                    const active = scales.some(s => s.dia_semana === d && h >= s.hora_inicio && h < s.hora_fim);
+                    grid.innerHTML += `<div class="grid-cell ${active ? 'cell-active' : ''}">${active ? 'LAB' : ''}</div>`;
+                }
             }
         }
+
         init();
+    </script>
+</body>
+</html>
     </script>
 </body>
 
