@@ -352,24 +352,30 @@
             position: relative;
         }
 
+        .grid-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-top: 2rem;
+        }
+
         .individual-grid {
             display: grid;
-            grid-template-columns: 80px repeat(5, 1fr);
-            gap: 10px;
-            margin-top: 2rem;
+            grid-template-columns: 52px repeat(5, minmax(44px, 1fr));
+            gap: 6px;
+            min-width: 320px;
         }
 
         .grid-header {
             font-weight: 700;
             color: var(--primary);
             text-align: center;
-            padding: 10px;
-            font-size: 0.8rem;
+            padding: 6px 2px;
+            font-size: 0.75rem;
             text-transform: uppercase;
         }
 
         .grid-time {
-            font-size: 0.8rem;
+            font-size: 0.72rem;
             color: var(--secondary);
             display: flex;
             align-items: center;
@@ -378,12 +384,20 @@
 
         .grid-cell {
             background: rgba(255,255,255,0.03);
-            border-radius: 8px;
-            height: 40px;
+            border-radius: 6px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.65rem;
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 1.2rem 0.8rem;
+                border-radius: 1rem;
+            }
         }
 
         .cell-active {
@@ -457,9 +471,9 @@
                 <label>Selecionar Pessoa:</label>
                 <select id="select-person-individual" class="individual-selector"></select>
             </div>
-            <div class="individual-grid" id="schedule-grid">
+            <div class="grid-wrapper"><div class="individual-grid" id="schedule-grid">
                 <!-- Preenchido via JS -->
-            </div>
+            </div></div>
         </div>
     </div>
 

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add admin.html index.html batch_insert.html import_escalas.html insert_tasks.html manual_migration.js migration_helper.html migration_horarios.html process_images.html temp_insert_tasks.js)",
+      "Bash(git commit:*)",
+      "Bash(git config --global user.name \"schembek\")",
+      "Bash(git config --global user.email \"schembekufc@gmail.com\")",
+      "Bash(git push origin database-version)",
+      "Bash(gh api repos/schembekufc/presenca-lab/pages)",
+      "Bash(git checkout master)",
+      "Bash(git merge database-version)",
+      "Bash(git push origin master)"
+    ]
+  }
+}
