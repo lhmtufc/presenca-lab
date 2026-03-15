@@ -400,9 +400,21 @@
     <script>
         const SUPABASE_URL = 'https://vnodbsefjwvapvtdzgdl.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZub2Ric2Vmand2YXB2dGR6Z2RsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNzI5NTMsImV4cCI6MjA4ODk0ODk1M30.M-7v57-obulKagTn-p5Pp6oKJWwcuu5FIvSLJ6andvs';
-        const ADMIN_EMAIL = 'schembek.ai@gmail.com';
-        const ADMIN_PASSWORD = '973@H8Mh9-';
+        const EDGE_URL = SUPABASE_URL + '/functions/v1/admin-action';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let adminPin = sessionStorage.getItem('adminPin') || null;
+
+        async function adminAction(action, payload = {}) {
+            const res = await fetch(EDGE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+                body: JSON.stringify({ pin: adminPin, action, payload })
+            });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || 'Erro desconhecido');
+            return data;
+        }
 
         function confirmModal(message, confirmText = 'Confirmar', confirmStyle = '') {
             return new Promise(resolve => {
@@ -464,30 +476,29 @@
         }
 
         loginBtn.onclick = async () => {
-            if (passInput.value === '0718') {
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Entrando...';
-                const { error } = await supabaseClient.auth.signInWithPassword({
-                    email: ADMIN_EMAIL,
-                    password: ADMIN_PASSWORD
-                });
-                if (error) {
-                    passError.textContent = 'Erro de autenticação: ' + error.message;
-                    passError.style.display = 'block';
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Entrar';
-                } else {
-                    sessionStorage.setItem('isAdminAuthenticated', 'true');
-                    checkAuth();
-                }
-            } else {
+            const pin = passInput.value;
+            if (!pin) return;
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Verificando...';
+            try {
+                adminPin = pin;
+                await adminAction('validate');
+                sessionStorage.setItem('isAdminAuthenticated', 'true');
+                sessionStorage.setItem('adminPin', pin);
+                checkAuth();
+            } catch(e) {
+                adminPin = null;
+                passError.textContent = 'PIN incorreto!';
                 passError.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Entrar';
             }
         };
 
         function logout() {
-            supabaseClient.auth.signOut();
+            adminPin = null;
             sessionStorage.removeItem('isAdminAuthenticated');
+            sessionStorage.removeItem('adminPin');
             document.getElementById('admin-content').style.display = 'none';
             document.getElementById('login-screen').style.display = 'block';
             document.getElementById('logout-btn').style.display = 'none';
@@ -593,25 +604,15 @@
 
             if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
             try {
-                // 1. Identificar o que remover e o que adicionar
                 const toRemove = originalScales.filter(o => !pendingScales.some(p => p.dia_semana === o.dia_semana && p.hora_inicio === o.hora_inicio));
                 const toAdd = pendingScales.filter(p => !originalScales.some(o => o.dia_semana === p.dia_semana && o.hora_inicio === p.hora_inicio));
-
-                if (toRemove.length > 0) {
-                    await supabaseClient.from('escalas').delete().in('id', toRemove.map(r => r.id));
-                }
-
-                if (toAdd.length > 0) {
-                    await supabaseClient.from('escalas').insert(toAdd.map(a => ({ 
-                        bolsista_id: bolsistaId, 
-                        dia_semana: a.dia_semana, 
-                        hora_inicio: a.hora_inicio, 
-                        hora_fim: a.hora_fim 
-                    })));
-                }
-
+                await adminAction('save_schedule', {
+                    bolsista_id: bolsistaId,
+                    to_remove: toRemove.map(r => r.id),
+                    to_add: toAdd
+                });
                 toast("Escala atualizada com sucesso!");
-                await loadBolsistaSchedule(); // Recarregar do banco (re-renderiza o botão)
+                await loadBolsistaSchedule();
             } catch (e) {
                 toast("Erro ao salvar escala: " + e.message, 'error');
                 if (btn) { btn.disabled = false; btn.textContent = 'Confirmar Alterações de Horário'; }
@@ -799,10 +800,10 @@
             saveBtn.textContent = 'Salvando...';
             try {
                 if (editingTaskId) {
-                    await supabaseClient.from('tarefas').update({ projeto_id, descricao, responsaveis: resps, data_inicio, prazo, prioridade }).eq('id', editingTaskId);
+                    await adminAction('update_task', { id: editingTaskId, projeto_id, descricao, responsaveis: resps, data_inicio, prazo, prioridade });
                     toast("Tarefa atualizada!");
                 } else {
-                    await supabaseClient.from('tarefas').insert([{ projeto_id, descricao, responsaveis: resps, status: 'pendente', data_inicio, prazo, prioridade }]);
+                    await adminAction('create_task', { projeto_id, descricao, responsaveis: resps, data_inicio, prazo, prioridade });
                     toast("Tarefa criada!");
                 }
                 cancelEdit();
@@ -831,8 +832,7 @@
             if (!await confirmModal(`Marcar como concluída?\n"${desc}"`, 'Concluir', 'background: var(--accent); color: white; flex:1;')) return;
             if (btn) { btn.disabled = true; btn.textContent = '...'; }
             try {
-                const { error } = await supabaseClient.from('tarefas').update({ status: 'concluida' }).eq('id', id);
-                if (error) throw error;
+                await adminAction('complete_task', { id });
                 if (editingTaskId === id) cancelEdit();
                 await updateTasks();
                 renderTasks();
@@ -846,8 +846,7 @@
             if (!await confirmModal("Mover tarefa para a lixeira?", 'Mover para Lixeira', 'background: rgba(239,68,68,0.8); color: white; flex:1;')) return;
             if (btn) { btn.disabled = true; btn.textContent = '...'; }
             try {
-                const { error } = await supabaseClient.from('tarefas').update({ status: 'excluida' }).eq('id', id);
-                if (error) throw error;
+                await adminAction('delete_task', { id });
                 await updateTasks();
                 renderTasks();
             } catch (e) {
@@ -859,8 +858,7 @@
         async function restoreTask(id, btn) {
             if (btn) { btn.disabled = true; btn.textContent = '...'; }
             try {
-                const { error } = await supabaseClient.from('tarefas').update({ status: 'pendente' }).eq('id', id);
-                if (error) throw error;
+                await adminAction('restore_task', { id });
                 await updateTasks();
                 renderTasks();
             } catch (e) {
@@ -872,8 +870,7 @@
         async function reopenTask(id, btn) {
             if (btn) { btn.disabled = true; btn.textContent = '...'; }
             try {
-                const { error } = await supabaseClient.from('tarefas').update({ status: 'pendente' }).eq('id', id);
-                if (error) throw error;
+                await adminAction('reopen_task', { id });
                 await updateTasks();
                 renderTasks();
             } catch (e) {
@@ -885,16 +882,20 @@
         async function addBolsista() {
             const n = prompt("Nome do bolsista:");
             if (n) {
-                await supabaseClient.from('bolsistas').insert([{ nome: n, categoria: 'Bolsista' }]);
-                await loadData();
+                try {
+                    await adminAction('add_bolsista', { nome: n });
+                    await loadData();
+                } catch(e) { toast("Erro: " + e.message, 'error'); }
             }
         }
 
         async function renameBolsista(id, old) {
             const n = prompt("Novo nome:", old);
             if (n && n !== old) {
-                await supabaseClient.from('bolsistas').update({ nome: n }).eq('id', id);
-                await loadData();
+                try {
+                    await adminAction('rename_bolsista', { id, nome: n });
+                    await loadData();
+                } catch(e) { toast("Erro: " + e.message, 'error'); }
             }
         }
 
@@ -902,8 +903,10 @@
             if (e.target.value === 'NEW_PROJECT') {
                 const n = prompt("Nome do projeto:");
                 if (n) {
-                    await supabaseClient.from('projetos').insert([{ nome: n }]);
-                    await loadData();
+                    try {
+                        await adminAction('add_project', { nome: n });
+                        await loadData();
+                    } catch(e) { toast("Erro: " + e.message, 'error'); e.target.value = ''; }
                 } else { e.target.value = ''; }
             }
         };
@@ -917,9 +920,7 @@
             this.disabled = true;
             this.textContent = 'Salvando...';
             try {
-                const { error } = await supabaseClient.from('configuracoes')
-                    .upsert({ chave: 'aviso_principal', valor: val }, { onConflict: 'chave' });
-                if (error) throw error;
+                await adminAction('save_notice', { valor: val });
                 toast("Aviso atualizado com sucesso!");
             } catch (e) { toast("Erro ao salvar aviso: " + e.message, 'error'); }
             finally {
