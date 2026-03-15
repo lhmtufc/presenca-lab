@@ -504,11 +504,11 @@
 
         /* Botões de ação nas tarefas */
         .task-item { position: relative !important; padding-right: 50px !important; }
-        .btn-task-edit, .btn-task-complete { position:absolute; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:0.75rem; opacity:0.2; padding:3px; transition:opacity 0.2s; line-height:1; }
-        .btn-task-edit { right:4px; }
-        .btn-task-complete { right:26px; color:#22c55e; font-weight:bold; font-size:0.9rem; }
-        .task-item:hover .btn-task-edit,
-        .task-item:hover .btn-task-complete { opacity:0.8; }
+        .btn-task-edit, .btn-task-complete { position:absolute; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:3px; transition:opacity 0.2s; line-height:1; }
+        .btn-task-edit { right:4px; font-size:0.75rem; opacity:0.25; }
+        .btn-task-complete { right:26px; color:#22c55e; font-weight:bold; font-size:1rem; opacity:0.7; }
+        .task-item:hover .btn-task-edit { opacity:0.8; }
+        .task-item:hover .btn-task-complete { opacity:1; }
         .btn-task-edit:hover, .btn-task-complete:hover { opacity:1 !important; }
 
         /* Modal de edição de tarefa */
