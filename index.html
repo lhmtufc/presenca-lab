@@ -753,7 +753,7 @@
                             }
                             
                             let deadlineHtml = t.prazo ? `<div class="task-deadline">📅 Prazo: ${new Date(t.prazo + 'T12:00:00').toLocaleDateString('pt-BR')}</div>` : '';
-                            let priorityHtml = `<span class="priority-tag priority-${t.prioridade || 'media'}">${sanitize(t.prioridade || 'média')}</span>`;
+                            let priorityHtml = `<span class="priority-tag priority-${t.prioridade || 'media'}">Prioridade: ${sanitize(t.prioridade || 'média')}</span>`;
 
                             return `<div class="task-item ${statusClass}"><button class="btn-task-complete" onclick="requestCompleteTask('${t.id}')" title="Concluir tarefa">✓</button><button class="btn-task-edit" onclick="requestEditTask('${t.id}')" title="Editar tarefa">✏️</button>${priorityHtml}<span class="project-tag">${sanitize(t.projetos.nome)}</span> ${sanitize(t.descricao)}${deadlineHtml}</div>`;
                         }).join('') + '</div>';
