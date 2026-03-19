@@ -913,6 +913,7 @@
                     <div id="bolsista-row-${p.id}" style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); padding:0.6rem 0.8rem; border-radius:0.5rem; border:1px solid rgba(255,255,255,0.06);">
                         <span style="flex:1; font-weight:600;">${sanitize(p.nome)}</span>
                         <button onclick="startEditBolsista('${p.id}', '${sanitize(p.nome).replace(/'/g, "\\'")}')" style="background:rgba(56,189,248,0.1); color:var(--primary); border:1px solid rgba(56,189,248,0.3); padding:4px 12px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">Editar</button>
+                        <button onclick="deleteBolsista('${p.id}', '${sanitize(p.nome).replace(/'/g, "\\'")}')" style="background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3); padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:600;">🗑️</button>
                     </div>`).join('');
         }
 
@@ -935,6 +936,16 @@
             try {
                 await adminAction('rename_bolsista', { id, nome: n });
                 toast('Nome atualizado!');
+                await loadData();
+                renderBolsistasList();
+            } catch(e) { toast('Erro: ' + e.message, 'error'); }
+        }
+
+        async function deleteBolsista(id, nome) {
+            if (!await confirmModal(`Excluir o bolsista "${nome}"?\nEsta ação não pode ser desfeita.`, 'Excluir', 'background:rgba(239,68,68,0.8); color:white; flex:1;')) return;
+            try {
+                await adminAction('delete_bolsista', { id });
+                toast('Bolsista excluído.');
                 await loadData();
                 renderBolsistasList();
             } catch(e) { toast('Erro: ' + e.message, 'error'); }
