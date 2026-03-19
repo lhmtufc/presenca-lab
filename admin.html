@@ -795,7 +795,9 @@
             document.getElementById('task-form-section').style.display = 'none';
             document.getElementById('btn-toggle-task-form').innerText = '+ Criar Nova Tarefa';
             
-            document.getElementById('save-task-btn').innerText = 'Salvar Tarefa';
+            const saveBtn = document.getElementById('save-task-btn');
+            saveBtn.innerText = 'Salvar Tarefa';
+            saveBtn.disabled = false;
             document.getElementById('cancel-edit-btn').style.display = 'none';
             document.getElementById('finish-task-btn').style.display = 'none';
         }

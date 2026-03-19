@@ -140,9 +140,12 @@ serve(async (req) => {
         ({ error } = await supabase.from("bolsistas").update({ nome: payload.nome }).eq("id", payload.id));
         break;
 
-      case "delete_bolsista":
+      case "delete_bolsista": {
+        const { error: e1 } = await supabase.from("escalas").delete().eq("bolsista_id", payload.id);
+        if (e1) { error = e1; break; }
         ({ error } = await supabase.from("bolsistas").delete().eq("id", payload.id));
         break;
+      }
 
       case "add_project":
         ({ error } = await supabase.from("projetos").insert([{ nome: payload.nome }]));
