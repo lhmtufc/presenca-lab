@@ -518,6 +518,20 @@
 
         .btn-task-lookup { background: #2dd4bf; color: #0f172a; border: none; }
         .btn-task-lookup:hover { background: #14b8a6; }
+
+        /* Custom dropdown consultar tarefa */
+        .custom-dropdown { position: relative; flex: 1; min-width: 0; }
+        .custom-dropdown-btn { width: 100%; background: #1e293b; color: var(--text); border: 1px solid rgba(255,255,255,0.15); border-radius: 0.5rem; padding: 0.5rem 2rem 0.5rem 0.75rem; font-family: inherit; font-size: 0.9rem; cursor: pointer; text-align: left; position: relative; min-height: 2.2rem; }
+        .custom-dropdown-btn::after { content: "▾"; position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); color: var(--secondary); pointer-events: none; }
+        .custom-dropdown-btn .cd-proj { font-size: 0.75rem; color: var(--primary); font-weight: 600; display: block; line-height: 1.2; }
+        .custom-dropdown-btn .cd-desc { display: block; line-height: 1.3; }
+        .custom-dropdown-list { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #1e293b; border: 1px solid rgba(255,255,255,0.15); border-radius: 0.5rem; z-index: 100; max-height: 320px; overflow-y: auto; }
+        .custom-dropdown-list.open { display: block; }
+        .custom-dropdown-item { padding: 0.5rem 0.75rem; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .custom-dropdown-item:last-child { border-bottom: none; }
+        .custom-dropdown-item:hover, .custom-dropdown-item.selected { background: rgba(56,189,248,0.1); }
+        .custom-dropdown-item .cd-proj { font-size: 0.75rem; color: var(--primary); font-weight: 600; line-height: 1.3; }
+        .custom-dropdown-item .cd-desc { font-size: 0.9rem; color: var(--text); line-height: 1.4; }
         .task-lookup-detail { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; padding: 1.2rem 1.4rem; margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
         .task-lookup-desc { font-size: 1.1rem; font-weight: 700; color: var(--text); line-height: 1.4; }
         .task-lookup-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
@@ -572,9 +586,14 @@
             <h2 style="margin-bottom: 0.5rem;">Consultar Tarefa</h2>
             <div class="control-group" style="justify-content: flex-start; margin-bottom: 0;">
                 <label>Selecionar Tarefa:</label>
-                <select id="select-task-lookup" class="individual-selector" style="flex:1; min-width:0;"></select>
+                <div class="custom-dropdown" id="custom-dropdown-task">
+                    <button type="button" class="custom-dropdown-btn" id="custom-dropdown-btn-task">
+                        <span style="color:var(--secondary); font-size:0.9rem;">-- Selecione uma tarefa --</span>
+                    </button>
+                    <div class="custom-dropdown-list" id="custom-dropdown-list-task"></div>
+                </div>
             </div>
-            <div id="task-lookup-result" style="text-align:center; padding:1.5rem 0; opacity:0.5; font-size:0.95rem;">
+            <div id="task-lookup-result" style="text-align:center; padding:1.5rem 0; font-size:0.95rem;">
                 Escolha uma tarefa acima para ver os detalhes.
             </div>
         </div>
@@ -678,7 +697,7 @@
 
             const sel = document.getElementById('select-person-individual');
             sel.innerHTML = '<option value="">-- Selecione uma pessoa --</option>' +
-                allParticipants.map(p => `<option value="${p.id}">${sanitize(p.nome)}</option>`).join('');
+                [...allParticipants].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(p => `<option value="${p.id}">${sanitize(p.nome)}</option>`).join('');
             
             // Limpar grid inicial
             document.getElementById('schedule-grid').innerHTML = '<p style="grid-column: span 6; text-align:center; padding:20px; opacity:0.5;">Escolha alguém acima para ver o horário.</p>';
@@ -922,7 +941,7 @@
 
             const projSel = document.getElementById('edit-task-project');
             projSel.innerHTML = '<option value="">-- Selecione --</option>' +
-                projectsList.map(p => `<option value="${p.id}" ${p.id === task.projeto_id ? 'selected' : ''}>${sanitize(p.nome)}</option>`).join('');
+                [...projectsList].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(p => `<option value="${p.id}" ${p.id === task.projeto_id ? 'selected' : ''}>${sanitize(p.nome)}</option>`).join('');
 
             document.getElementById('edit-task-desc').value = task.descricao || '';
             document.getElementById('edit-task-start').value = task.data_inicio || '';
@@ -997,19 +1016,48 @@
         }
 
         // Lógica consultar tarefa
+        let selectedTaskId = null;
+
+        function buildTaskDropdown() {
+            const list = document.getElementById('custom-dropdown-list-task');
+            const sorted = [...cachedTasks].sort((a, b) => {
+                const aLabel = (a.projetos?.nome || '') + a.descricao;
+                const bLabel = (b.projetos?.nome || '') + b.descricao;
+                return aLabel.localeCompare(bLabel, 'pt-BR');
+            });
+            list.innerHTML = sorted.map(t => `
+                <div class="custom-dropdown-item" data-id="${t.id}">
+                    ${t.projetos?.nome ? `<div class="cd-proj">${sanitize(t.projetos.nome)}</div>` : ''}
+                    <div class="cd-desc">${sanitize(t.descricao)}</div>
+                </div>`).join('');
+            list.querySelectorAll('.custom-dropdown-item').forEach(item => {
+                item.onclick = () => {
+                    selectedTaskId = item.dataset.id;
+                    const btn = document.getElementById('custom-dropdown-btn-task');
+                    btn.innerHTML = item.innerHTML;
+                    list.classList.remove('open');
+                    renderTaskLookup(selectedTaskId);
+                };
+            });
+        }
+
+        document.getElementById('custom-dropdown-btn-task').onclick = (e) => {
+            e.stopPropagation();
+            document.getElementById('custom-dropdown-list-task').classList.toggle('open');
+        };
+        document.addEventListener('click', () => {
+            document.getElementById('custom-dropdown-list-task')?.classList.remove('open');
+        });
+
         document.getElementById('btn-lookup-task').onclick = () => {
-            const sel = document.getElementById('select-task-lookup');
-            sel.innerHTML = '<option value="">-- Selecione uma tarefa --</option>' +
-                cachedTasks.map(t => {
-                    const proj = t.projetos?.nome ? `[${t.projetos.nome}] ` : '';
-                    return `<option value="${t.id}">${sanitize(proj + t.descricao)}</option>`;
-                }).join('');
+            selectedTaskId = null;
+            document.getElementById('custom-dropdown-btn-task').innerHTML = '<span style="color:var(--secondary); font-size:0.9rem;">-- Selecione uma tarefa --</span>';
+            buildTaskDropdown();
             document.getElementById('task-lookup-result').innerHTML = '<p style="opacity:0.5;">Escolha uma tarefa acima para ver os detalhes.</p>';
             document.getElementById('modal-task-lookup').style.display = 'flex';
         };
 
-        document.getElementById('select-task-lookup').onchange = () => {
-            const taskId = document.getElementById('select-task-lookup').value;
+        function renderTaskLookup(taskId) {
             const result = document.getElementById('task-lookup-result');
             if (!taskId) {
                 result.innerHTML = '<p style="opacity:0.5;">Escolha uma tarefa acima para ver os detalhes.</p>';
@@ -1047,7 +1095,7 @@
                             : `<p style="opacity:0.5; font-size:0.9rem; margin-top:0.4rem;">Nenhum responsável atribuído.</p>`}
                     </div>
                 </div>`;
-        };
+        }
 
         init();
     </script>
